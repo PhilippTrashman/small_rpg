@@ -1,2 +1,2 @@
 # small_rpg
-A Small RPG created for Fun using pygame
+A Small RPG in development. Still at Idea Phase
