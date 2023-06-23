@@ -72,8 +72,11 @@ class Player(pygame.sprite.Sprite):
             "race": "Human",
             "class": "Melee",
             "stats": self.stats,
+            "stat_points": 0,
             "skills": self.player_skills,
             "level": 1,
             "exp": 0,
+            "skill_points": 0,
+            "exp_cap": 50
         }
 

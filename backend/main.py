@@ -5,8 +5,8 @@ class FirstGame:
 
     def __init__(self):
         self.resolution = (800, 600)
-
         self.title = "Shadow Wizard Money Gang"
+        self.clock = pygame.time.Clock()
 
     def main(self):
         pygame.init()
