@@ -58,11 +58,29 @@ example_stat_sheet = {
     "luck": 1
 }
 
+example_key_binds = {
+            "up": (pygame.K_w, pygame.K_UP),
+            "down": (pygame.K_s, pygame.K_DOWN),
+            "left": (pygame.K_a, pygame.K_LEFT),
+            "right": (pygame.K_d, pygame.K_RIGHT)
+        }
+
 
 class Player(pygame.sprite.Sprite):
 
-    def __init__(self, player_class: str, stats: dict, position: tuple):
+    def __init__(self, player_class: str, stats: dict, position: tuple, pixel_size: int = 25, walking_speed: int = 4,
+                 key_binds: dict = example_key_binds):
+        """
+        Player class. Player only moves one pixel at a time with a standard speed of 4
+        :param player_class: class for the Created Character. Classes are named in the skilltree
+        :param stats: player stats. needs to be modelled after the S.P.E.C.I.A.L system from the Fallout series
+        :param position: where on the Screen does the player start
+        :param pixel_size: how big is the player and also how big one pixel on the screen is
+        :param walking_speed: how many pixels the character should move in a second
+        """
         pygame.sprite.Sprite.__init__(self)
+
+        self.keybinds = key_binds
 
         self.stats = stats
         self.player_class = player_class
@@ -79,20 +97,55 @@ class Player(pygame.sprite.Sprite):
             "skill_points": 0,
             "exp_cap": 50
         }
-
-        self.image = pygame.Surface((25, 25))
+        self.pixel_size = pixel_size
+        self.image = pygame.Surface((self.pixel_size, self.pixel_size))
         self.image.fill((255, 0, 0))
         self.rect = self.image.get_rect()
         self.rect.center = position
 
-    def update(self):
+        self.move_right_flag = True
+        self.move_left_flag = True
+        self.move_up_flag = True
+        self.move_down_flag = True
+
+        self.walking_speed = walking_speed
+        self.last_move_time = 0
+        self.move_delay = 1/self.walking_speed * 1000  # Delay between each movement in milliseconds
+        print(f'current move_delay: {self.move_delay}')
+
+    def place_character(self, x_coord: int, y_coord: int) -> None:
+        self.rect.x = x_coord
+        self.rect.y = y_coord
+
+    def get_player_placement(self) -> tuple:
+        return self.rect.x, self.rect.y
+
+    def update(self) -> None:
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT]:
-            self.rect.x -= 5
-        if keys[pygame.K_RIGHT]:
-            self.rect.x += 5
-        if keys[pygame.K_UP]:
-            self.rect.y -= 5
-        if keys[pygame.K_DOWN]:
-            self.rect.y += 5
+        move_speed = self.pixel_size  # Number of pixels to move per click
+
+        current_time = pygame.time.get_ticks()
+        # Check for movement keys
+        if keys[pygame.K_LEFT] and current_time - self.last_move_time >= self.move_delay:
+            if self.move_left_flag:
+                self.rect.x -= move_speed
+            self.last_move_time = current_time
+            # print(self.rect.x, self.rect.y)
+        if keys[pygame.K_RIGHT] and current_time - self.last_move_time >= self.move_delay:
+            if self.move_right_flag:
+                self.rect.x += move_speed
+            self.last_move_time = current_time
+            # print(self.rect.x, self.rect.y)
+        if keys[pygame.K_UP] and current_time - self.last_move_time >= self.move_delay:
+            if self.move_up_flag:
+                self.rect.y -= move_speed
+            self.last_move_time = current_time
+            # print(self.rect.x, self.rect.y)
+        if keys[pygame.K_DOWN] and current_time - self.last_move_time >= self.move_delay:
+            if self.move_down_flag:
+                self.rect.y += move_speed
+            self.last_move_time = current_time
+            # print(self.rect.x, self.rect.y)
+
+
 

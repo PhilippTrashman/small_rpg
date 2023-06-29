@@ -3,6 +3,12 @@ class CharacterClass:
     """Sets up the Character Class, also checks if Character Class is even available"""
 
     def __init__(self, skill_sheet: dict, current_class: str):
+        """
+        Class for Creating Character Classes. available skills will be generated. Unlocked skills have to be imported
+        with skill_sheet
+        :param skill_sheet: what skills have already been unlocked
+        :param current_class: available classes can be found in Skilltree
+        """
         self.existing_classes = [
             "melee",
             "knight", "grand_knight", "demon_knight", "demon_Lord",
@@ -20,8 +26,10 @@ class CharacterClass:
             "archer", "high_archer", "elven_archer", "high_elf"
         ]
 
+        self.unlocked_skills = skill_sheet
+
         if current_class not in self.existing_classes:
             raise ValueError("Chosen Class does not Exist - please check if you typed in class name correctly")
 
-
-
+    def init_melee(self):
+        print("chose melee Class")
