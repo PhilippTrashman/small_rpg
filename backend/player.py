@@ -58,18 +58,10 @@ example_stat_sheet = {
     "luck": 1
 }
 
-example_key_binds = {
-            "up": (pygame.K_w, pygame.K_UP),
-            "down": (pygame.K_s, pygame.K_DOWN),
-            "left": (pygame.K_a, pygame.K_LEFT),
-            "right": (pygame.K_d, pygame.K_RIGHT)
-        }
-
 
 class Player(pygame.sprite.Sprite):
 
-    def __init__(self, player_class: str, stats: dict, position: tuple, pixel_size: int = 25, walking_speed: int = 4,
-                 key_binds: dict = example_key_binds):
+    def __init__(self, player_class: str, stats: dict, position: tuple, pixel_size: int = 25, walking_speed: int = 4):
         """
         Player class. Player only moves one pixel at a time with a standard speed of 4
         :param player_class: class for the Created Character. Classes are named in the skilltree
@@ -79,8 +71,6 @@ class Player(pygame.sprite.Sprite):
         :param walking_speed: how many pixels the character should move in a second
         """
         pygame.sprite.Sprite.__init__(self)
-
-        self.keybinds = key_binds
 
         self.stats = stats
         self.player_class = player_class
@@ -103,10 +93,17 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = position
 
+        self.move_flag = False
+
         self.move_right_flag = True
         self.move_left_flag = True
         self.move_up_flag = True
         self.move_down_flag = True
+
+        self.right_movement = False
+        self.left_movement = False
+        self.up_movement = False
+        self.down_movement = False
 
         self.walking_speed = walking_speed
         self.last_move_time = 0
@@ -126,26 +123,39 @@ class Player(pygame.sprite.Sprite):
 
         current_time = pygame.time.get_ticks()
         # Check for movement keys
-        if keys[pygame.K_LEFT] and current_time - self.last_move_time >= self.move_delay:
-            if self.move_left_flag:
-                self.rect.x -= move_speed
-            self.last_move_time = current_time
-            # print(self.rect.x, self.rect.y)
-        if keys[pygame.K_RIGHT] and current_time - self.last_move_time >= self.move_delay:
-            if self.move_right_flag:
-                self.rect.x += move_speed
-            self.last_move_time = current_time
-            # print(self.rect.x, self.rect.y)
-        if keys[pygame.K_UP] and current_time - self.last_move_time >= self.move_delay:
-            if self.move_up_flag:
-                self.rect.y -= move_speed
-            self.last_move_time = current_time
-            # print(self.rect.x, self.rect.y)
-        if keys[pygame.K_DOWN] and current_time - self.last_move_time >= self.move_delay:
-            if self.move_down_flag:
-                self.rect.y += move_speed
-            self.last_move_time = current_time
-            # print(self.rect.x, self.rect.y)
+        if current_time - self.last_move_time >= self.move_delay:
+            if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+                if self.move_left_flag:
+                    self.rect.x -= move_speed
+                self.last_move_time = current_time
+                self.move_flag = True
+                self.left_movement = True
 
+            if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+                if self.move_right_flag:
+                    self.rect.x += move_speed
+                self.last_move_time = current_time
+                self.move_flag = True
+                self.right_movement = True
 
+            if keys[pygame.K_UP] or keys[pygame.K_w]:
+                if self.move_up_flag:
+                    self.rect.y -= move_speed
+                self.last_move_time = current_time
+                self.move_flag = True
+                self.up_movement = True
+
+            if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+                if self.move_down_flag:
+                    self.rect.y += move_speed
+                self.last_move_time = current_time
+                self.move_flag = True
+                self.down_movement = True
+
+        else:
+            self.move_flag = False
+            self.left_movement = False
+            self.right_movement = False
+            self.up_movement = False
+            self.down_movement = False
 
