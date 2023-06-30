@@ -2,7 +2,7 @@
 
 class CombatSkills:
 
-    def __init__(self, name: str = "", mp_cost: int = 0, hp_cost: int = 0, percentage_cost: bool = False,
+    def __init__(self, name: str, mp_cost: int = 0, hp_cost: int = 0, percentage_cost: bool = False,
                  damage: int = 0, skill_type: str = "skill", damage_type: str = "physical",
                  elemental_type: str = "none", affected: str = "enemy", aoe: bool = False):
         """
@@ -34,6 +34,9 @@ class CombatSkills:
         self.damage_type = damage_type
         self.elemental_type = elemental_type
         self.affected = affected
+
+        if self.name == "":
+            raise ValueError('Skill has no name')
 
         if self.skill_type not in self.__available_skill_types:
             raise ValueError('Skill Type not available. Available Skill types: "buff", "attack", "special"')

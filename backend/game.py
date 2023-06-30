@@ -76,7 +76,7 @@ class FirstGame:
 
         # Setting up the Background
         self.background = Screen()
-        self.background.update_background(Path("../assets/debug_background.png"))
+        self.background.update_background(Path("../assets/larger_debug_background.png"))
         self.bg_x = 0
         self.bg_y = 0
 
