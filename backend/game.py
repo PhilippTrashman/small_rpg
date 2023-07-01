@@ -1,13 +1,14 @@
 import pygame
 from character_classes import CharacterClass
 from player import Player
-from map_tiled import Screen
+from npc import NPC
+from map_tiled import WorldScreen
 from pathlib import Path
 
 
 class FirstGame:
 
-    def __init__(self, resolution: tuple):
+    def __init__(self, resolution: tuple, pixel_size: int = 25):
         """
         The Constructor for The Small RPG with an Unknown Name :)
         :param resolution: Sets up the Window Resolution
@@ -17,7 +18,8 @@ class FirstGame:
         self.title = "Shadow Wizard Money Gang"
         self.clock = pygame.time.Clock()
 
-        self.sprites = pygame.sprite.Group()
+        self.player_sprites = pygame.sprite.Group()
+        self.npc_sprites = pygame.sprite.Group()
         self.screen = pygame.display.set_mode(self.resolution)
         # Setting up Keybindings. Should be able to change them later in Settings window
         self.key_binding = {
@@ -46,7 +48,7 @@ class FirstGame:
         }
 
         # How big a single pixel will be
-        self.pixel_size = 25
+        self.pixel_size = pixel_size
 
         # placing the player in the middle of the screen
         player_position = (400, 300)
@@ -68,15 +70,16 @@ class FirstGame:
 
         self.player_position = self.player.get_player_placement()
         self.last_move_time = 0
-
         # Adding Character Sprite
-        self.sprites.add(self.player)
+        self.player_sprites.add(self.player)
 
-        print(f"{self.pixel_size*6} or {self.resolution[1]-self.pixel_size*6}")
+        # Place NPCs
+        self.npc = NPC((200+self.pixel_size//2, 125+self.pixel_size//2), "merchant", {}, self.pixel_size)
+        self.npc_sprites.add(self.npc)
 
         # Setting up the Background
-        self.background = Screen()
-        self.background.update_background(Path("../assets/larger_debug_background.png"))
+        self.background = WorldScreen()
+        self.background.update_background(Path("../assets/debug_background.png"))
         self.bg_x = 0
         self.bg_y = 0
 
@@ -91,6 +94,7 @@ class FirstGame:
         while running:
             self.clock.tick(60)
             self.player_position = self.player.get_player_placement()
+            # print(self.player_position)
 
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -117,12 +121,14 @@ class FirstGame:
 
                         self.player.move_delay = 1/self.walking_speed*1000
 
-            self.sprites.update()
+            self.player_sprites.update()
+            self.npc_sprites.update()
             self.move_camera()
             # self.display_checkerboard()
             self.screen.blit(self.background.loaded_bg, (self.bg_x, self.bg_y))
 
-            self.sprites.draw(self.screen)
+            self.player_sprites.draw(self.screen)
+            self.npc_sprites.draw(self.screen)
 
             pygame.display.flip()
             # print("...")
@@ -178,7 +184,28 @@ class FirstGame:
         Function Responsible for moving the Background, and limiting the players movement
         """
         position = self.player.get_player_placement()
-        if position[0] >= self.resolution[0]-self.pixel_size*9:
+        if self.player.move_flag:
+            if self.player.left_movement and not self.player.move_left_flag:
+                self.bg_x -= self.pixel_size
+                for npc in self.npc_sprites:
+                    npc.move(self.pixel_size, 0)
+
+            if self.player.right_movement and not self.player.move_right_flag:
+                self.bg_x += self.pixel_size
+                for npc in self.npc_sprites:
+                    npc.move(-self.pixel_size, 0)
+
+            if self.player.down_movement and not self.player.move_down_flag:
+                self.bg_y -= self.pixel_size
+                for npc in self.npc_sprites:
+                    npc.move(0, -self.pixel_size)
+
+            if self.player.up_movement and not self.player.move_up_flag:
+                self.bg_y += self.pixel_size
+                for npc in self.npc_sprites:
+                    npc.move(0, self.pixel_size)
+
+        if position[0]+self.pixel_size >= self.resolution[0]-self.pixel_size*9:
             self.player.move_right_flag = False
         else:
             self.player.move_right_flag = True
@@ -197,18 +224,6 @@ class FirstGame:
         else:
             self.player.move_up_flag = True
 
-        if self.player.move_flag:
-            if self.player.left_movement and not self.player.move_left_flag:
-                self.bg_x -= self.pixel_size
-            if self.player.right_movement and not self.player.move_right_flag:
-                self.bg_x += self.pixel_size
-            if self.player.down_movement and not self.player.move_down_flag:
-                self.bg_y -= self.pixel_size
-            if self.player.up_movement and not self.player.move_up_flag:
-                self.bg_y += self.pixel_size
-
-
-
     def display_checkerboard(self):
         white = (50, 50, 50)
         black = (0, 0, 0)
@@ -219,8 +234,6 @@ class FirstGame:
                     self.screen.fill(black, (x, y, self.pixel_size, self.pixel_size))
                 else:
                     self.screen.fill(white, (x, y, self.pixel_size, self.pixel_size))
-
-        self.move_camera()
 
     def display_menu(self):
 
@@ -316,6 +329,7 @@ class FirstGame:
             self.screen.fill((150, 150, 150))
 
             pygame.display.flip()
+
 
 if __name__ == "__main__":
 
