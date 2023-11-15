@@ -13,11 +13,11 @@ class CharacterClass:
             "melee",
             "knight", "grand_knight", "demon_knight", "demon_Lord",
             "barbarian", "barbarian_chief", "ursus_fighter", "ursus_alpha",
-            "templar", "high_templar", "inquisitor", "judicor",
+            "templar", "high_templar", "inquisitor", "judicar",
 
             "mage",
             "wizard", "grand_wizard", "wizard_lizzard", "king_gizzard",
-            "priest", "high_priest", "corrupted_acolyte", "seductress",
+            "priest", "high_priest", "bard", "superstar",
             "necromancer", "occult_leader", "lich", "elder_lich",
 
             "rogue",

@@ -1,28 +1,30 @@
 import pygame
-from character_classes import CharacterClass
-from player import Player
-from npc import NPC
-from map_tiled import WorldScreen
+from backend.character_classes import CharacterClass
+from backend.player import Player
+from backend.npc import NPC
+from backend.map_tiled import WorldScreenManaged, MapLayer
 from pathlib import Path
 
 
-class FirstGame:
+class ScrunkleQuest:
 
-    def __init__(self, resolution: tuple, pixel_size: int = 25):
+    def __init__(self, resolution: tuple, pixel_size: int = 25, debug: bool = False):
         """
-        The Constructor for The Small RPG with an Unknown Name :)
+        The Constructor for Scrunkle Quest :)
         :param resolution: Sets up the Window Resolution
         """
         # Setting up basic pygame settings
-        self.resolution = resolution
-        self.title = "Shadow Wizard Money Gang"
-        self.clock = pygame.time.Clock()
+        self.__resolution = resolution
+        self.title = "Scrunkle Quest"
+        self.__clock = pygame.time.Clock()
+        self.__debug = debug
+        self.__running = False
 
         self.player_sprites = pygame.sprite.Group()
         self.npc_sprites = pygame.sprite.Group()
-        self.screen = pygame.display.set_mode(self.resolution)
+        self.__screen = pygame.display.set_mode(self.__resolution)
         # Setting up Keybindings. Should be able to change them later in Settings window
-        self.key_binding = {
+        self.__key_binding = {
             "menu": pygame.K_p,
             "settings": pygame.K_o,
             "inventory": pygame.K_i,
@@ -40,19 +42,21 @@ class FirstGame:
             "skills": False
         }
         # What buttons are bound to player movement. Not currently working
-        self.player_movement = {
+        self.__player_movement = {
             "up": (pygame.K_w, pygame.K_UP),
             "down": (pygame.K_s, pygame.K_DOWN),
             "left": (pygame.K_a, pygame.K_LEFT),
-            "right": (pygame.K_d, pygame.K_RIGHT)
+            "right": (pygame.K_d, pygame.K_RIGHT),
+            "sprint": (pygame.K_LSHIFT, pygame.K_RSHIFT)
         }
 
         # How big a single pixel will be
         self.pixel_size = pixel_size
 
         # placing the player in the middle of the screen
-        player_position = (400, 300)
-        self.walking_speed = 4
+        self.player_position = (55, 50)
+        self.__walking_speed = 8
+        self.__last_movement_time = 0
 
         example_stat_sheet = {
             "strength": 1,
@@ -64,109 +68,191 @@ class FirstGame:
             "luck": 1
         }
 
-        # Creating Player Character
-        self.player = Player(player_class="knight", stats=example_stat_sheet, position=player_position, pixel_size=25,
-                        walking_speed=self.walking_speed)
+        # NPCs should be placed like tiles on the Interactables layer
+        # Plan about how to id npcs and add their diallogues/function.
+        # Maybe just use a second layer with its own tileset as the id, use the collision system that you already,
+        # implemented
 
-        self.player_position = self.player.get_player_placement()
+        # Setting up the Background
+        self.__bg_x = -40 * pixel_size
+        self.__bg_y = -45 * pixel_size
+
+        # Creating Player Character
+        self.player = Player(
+            player_class="knight",
+            stats=example_stat_sheet,
+            position=self.player_position,
+            pixel_size=25
+        )
+
         self.last_move_time = 0
         # Adding Character Sprite
         self.player_sprites.add(self.player)
 
-        # Place NPCs
-        self.npc = NPC((200+self.pixel_size//2, 125+self.pixel_size//2), "merchant", {}, self.pixel_size)
-        self.npc_sprites.add(self.npc)
+        self.__overworld_map_layer: [str, MapLayer] = {}
+        self.__check_player_position = (0, 0)
+        self.__world_screen = self.__draw_map()
+        self.__world_screen_surface = self.__world_screen.get_map()
+        if self.__debug:
+            pygame.image.save(self.__world_screen_surface, "combined_map.png")
 
-        # Setting up the Background
-        self.background = WorldScreen()
-        self.background.update_background(Path("../assets/debug_background.png"))
-        self.bg_x = 0
-        self.bg_y = 0
+    def __draw_map(self) -> WorldScreenManaged:
+        self.__overworld_map_layer["background"] = MapLayer(
+            Path("map_tiles/new_process/overworld_upper_left_background.csv"),
+            tile_size=16,
+        )
+        self.__overworld_map_layer["boundaries"] = MapLayer(
+            Path("map_tiles/new_process/overworld_upper_left_boundaries.csv"),
+            tile_size=16,
+        )
+        self.collisions = self.__overworld_map_layer["boundaries"].get_collision_map()
+        if self.__debug:
+            print(self.collisions)
+
+        self.__overworld_map_layer["paths"] = MapLayer(
+            Path("map_tiles/new_process/overworld_upper_left_paths.csv"),
+            tile_size=16,
+        )
+        paths = self.__overworld_map_layer["paths"].get_collision_map()
+        for path_row, col_row in zip(paths, self.collisions):
+            for j, entry in enumerate(path_row):
+                if entry is not None:
+                    col_row[j] = None
+
+        self.__overworld_map_layer["interactables"] = MapLayer(
+            Path("map_tiles/new_process/overworld_upper_left_interactables.csv"),
+            tile_size=16,
+        )
+        world_screen = WorldScreenManaged(
+            Path("assets/tileset/FF5 Tileset/overworld_edited.png"),
+            self.pixel_size,
+            16
+        )
+        for layer in self.__overworld_map_layer.values():
+            world_screen.add_layer(layer)
+        return world_screen
 
     def main(self):
+        print(self.__player_movement.values())
         pygame.init()
         pygame.display.set_caption(self.title)
-        self.player.place_character(self.pixel_size * self.resolution[0]/2 // self.pixel_size,
-                                    self.pixel_size * self.resolution[1]/2 // self.pixel_size)
+        self.player.place_character(self.pixel_size * self.__resolution[0] / 2 // self.pixel_size,
+                                    self.pixel_size * self.__resolution[1] / 2 // self.pixel_size)
 
-        running = True
+        self.__running = True
 
-        while running:
-            self.clock.tick(60)
-            self.player_position = self.player.get_player_placement()
-            # print(self.player_position)
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-                if event.type == pygame.KEYDOWN:
-                    if event.key in self.bound_keys:
-                        self.open_window(event.key)
-
-                    if event.key == pygame.K_ESCAPE and not self.windows["menu"]:
-                        # print("opening menu")
-                        self.set_open_window_flag("menu")
-                        self.display_menu()
-
-                    if event.key == pygame.K_LSHIFT:
-                        if self.walking_speed == 4:
-                            # print("changed speed to 8")
-                            self.walking_speed = 8
-                        elif self.walking_speed == 8:
-                            # print("changed speed to 4")
-                            self.walking_speed = 4
-                        else:
-                            self.walking_speed = 4
-
-                        self.player.move_delay = 1/self.walking_speed*1000
-
+        while self.__running:
+            if self.__check_player_position in self.collisions:
+                print("YES")
+            self.__clock.tick(60)
+            self.__key_event_handler()
             self.player_sprites.update()
             self.npc_sprites.update()
-            self.move_camera()
             # self.display_checkerboard()
-            self.screen.blit(self.background.loaded_bg, (self.bg_x, self.bg_y))
-
-            self.player_sprites.draw(self.screen)
-            self.npc_sprites.draw(self.screen)
+            self.__draw_background()
+            # self.screen.blit(self.worldmap, (self.bg_x, self.bg_y))
+            self.player_sprites.draw(self.__screen)
+            self.npc_sprites.draw(self.__screen)
 
             pygame.display.flip()
             # print("...")
         pygame.quit()
 
+    def __key_event_handler(self) -> None:
+        """
+        Function for handling Key inputs for the game
+        """
+        current_time = pygame.time.get_ticks()
+        movement_delay = 1000 / self.__walking_speed
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.__running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    self.__running = False
+
+        keys = pygame.key.get_pressed()
+
+        # Check the state of keys for continuous movement
+
+        if current_time - self.__last_movement_time >= movement_delay:
+            if keys[self.__player_movement["up"][0]] or keys[self.__player_movement["up"][1]]:
+                self.__move_player(0, 1)
+            if keys[self.__player_movement["down"][0]] or keys[self.__player_movement["down"][1]]:
+                self.__move_player(0, -1)
+            if keys[self.__player_movement["left"][0]] or keys[self.__player_movement["left"][1]]:
+                self.__move_player(1, 0)
+            if keys[self.__player_movement["right"][0]] or keys[self.__player_movement["right"][1]]:
+                self.__move_player(-1, 0)
+            if keys[self.__player_movement["sprint"][0]] or keys[self.__player_movement["sprint"][0]]:
+                self.__walking_speed = 14
+            else:
+                self.__walking_speed = 8
+
+            self.__last_movement_time = current_time
+
+        # Handle other bound keys
+        for key in self.bound_keys:
+            if keys[key]:
+                self.open_window(key)
+
+    def __move_player(self, dx: int, dy: int):
+        """
+        Function responsible for moving the player
+        :param dx: how much to move in the x direction
+        :param dy: how much to move in the y direction
+        """
+
+        # print(self.player_position[0] * self.pixel_size)
+        new_bg_x = ((self.__bg_x + dx * self.pixel_size) - 400) * -1
+        new_bg_y = ((self.__bg_y + dy * self.pixel_size) - 300) * -1
+        self.__check_player_position = (new_bg_x, new_bg_y)
+        move_flag = False
+
+        for row in self.collisions:
+            if self.__check_player_position in row:
+                move_flag = False
+                break
+            else:
+                move_flag = True
+        if move_flag:
+            self.__bg_x += dx * self.pixel_size
+            self.__bg_y += dy * self.pixel_size
+
+    def __draw_background(self):
+        """draws worldmap and props onto the screen"""
+        self.__screen.blit(self.__world_screen_surface, (self.__bg_x, self.__bg_y))
+
     def set_open_window_flag(self, window: str):
         for entry in self.windows:
             if entry == window:
-                # print(f"set Flag for {window}")
                 self.windows[entry] = True
             else:
                 self.windows[entry] = False
 
     def open_window(self, key_type):
 
-        # print(self.windows)
-
-        if key_type == self.key_binding["menu"] and not self.windows["menu"]:
+        if key_type == self.__key_binding["menu"] and not self.windows["menu"]:
             # print("opening menu")
             self.set_open_window_flag("menu")
             self.display_menu()
 
-        if key_type == self.key_binding["settings"] and not self.windows["settings"]:
+        if key_type == self.__key_binding["settings"] and not self.windows["settings"]:
             # print("opening menu")
             self.set_open_window_flag("settings")
             self.display_settings()
 
-        if key_type == self.key_binding["inventory"] and not self.windows["inventory"]:
+        if key_type == self.__key_binding["inventory"] and not self.windows["inventory"]:
             # print("opening menu")
             self.set_open_window_flag("inventory")
             self.display_inventory()
 
-        if key_type == self.key_binding["quests"] and not self.windows["quests"]:
+        if key_type == self.__key_binding["quests"] and not self.windows["quests"]:
             # print("opening menu")
             self.set_open_window_flag("quests")
             self.display_quests()
 
-        if key_type == self.key_binding["skills"] and not self.windows["skills"]:
+        if key_type == self.__key_binding["skills"] and not self.windows["skills"]:
             # print("opening menu")
             self.set_open_window_flag("skills")
             self.display_skills()
@@ -179,61 +265,16 @@ class FirstGame:
         for entry in self.windows:
             self.windows[entry] = False
 
-    def move_camera(self):
-        """
-        Function Responsible for moving the Background, and limiting the players movement
-        """
-        position = self.player.get_player_placement()
-        if self.player.move_flag:
-            if self.player.left_movement and not self.player.move_left_flag:
-                self.bg_x -= self.pixel_size
-                for npc in self.npc_sprites:
-                    npc.move(self.pixel_size, 0)
-
-            if self.player.right_movement and not self.player.move_right_flag:
-                self.bg_x += self.pixel_size
-                for npc in self.npc_sprites:
-                    npc.move(-self.pixel_size, 0)
-
-            if self.player.down_movement and not self.player.move_down_flag:
-                self.bg_y -= self.pixel_size
-                for npc in self.npc_sprites:
-                    npc.move(0, -self.pixel_size)
-
-            if self.player.up_movement and not self.player.move_up_flag:
-                self.bg_y += self.pixel_size
-                for npc in self.npc_sprites:
-                    npc.move(0, self.pixel_size)
-
-        if position[0]+self.pixel_size >= self.resolution[0]-self.pixel_size*9:
-            self.player.move_right_flag = False
-        else:
-            self.player.move_right_flag = True
-
-        if position[0] < self.pixel_size*9:
-            self.player.move_left_flag = False
-        else:
-            self.player.move_left_flag = True
-
-        if position[1] >= self.resolution[1]-self.pixel_size*6:
-            self.player.move_down_flag = False
-        else:
-            self.player.move_down_flag = True
-        if position[1] < self.pixel_size*6:
-            self.player.move_up_flag = False
-        else:
-            self.player.move_up_flag = True
-
     def display_checkerboard(self):
         white = (50, 50, 50)
         black = (0, 0, 0)
 
-        for y in range(0, self.resolution[1], self.pixel_size):
-            for x in range(0, self.resolution[0], self.pixel_size):
+        for y in range(0, self.__resolution[1], self.pixel_size):
+            for x in range(0, self.__resolution[0], self.pixel_size):
                 if (x // self.pixel_size) % 2 == (y // self.pixel_size) % 2:
-                    self.screen.fill(black, (x, y, self.pixel_size, self.pixel_size))
+                    self.__screen.fill(black, (x, y, self.pixel_size, self.pixel_size))
                 else:
-                    self.screen.fill(white, (x, y, self.pixel_size, self.pixel_size))
+                    self.__screen.fill(white, (x, y, self.pixel_size, self.pixel_size))
 
     def display_menu(self):
 
@@ -251,7 +292,7 @@ class FirstGame:
                         if event.key in self.bound_keys:
                             self.open_window(event.key)
 
-            self.screen.fill((0, 255, 0))
+            self.__screen.fill((0, 255, 0))
 
             pygame.display.flip()  # Update the display
 
@@ -271,7 +312,7 @@ class FirstGame:
                         if event.key in self.bound_keys:
                             self.open_window(event.key)
 
-            self.screen.fill((0, 0, 255))
+            self.__screen.fill((0, 0, 255))
 
             pygame.display.flip()  # Update the display
 
@@ -290,7 +331,7 @@ class FirstGame:
                         if event.key in self.bound_keys:
                             self.open_window(event.key)
 
-            self.screen.fill((0, 150, 150))
+            self.__screen.fill((0, 150, 150))
 
             pygame.display.flip()
 
@@ -308,7 +349,7 @@ class FirstGame:
                         if event.key in self.bound_keys:
                             self.open_window(event.key)
 
-            self.screen.fill((150, 150, 0))
+            self.__screen.fill((150, 150, 0))
 
             pygame.display.flip()
 
@@ -326,12 +367,24 @@ class FirstGame:
                         if event.key in self.bound_keys:
                             self.open_window(event.key)
 
-            self.screen.fill((150, 150, 150))
+            self.__screen.fill((150, 150, 150))
+
+            pygame.display.flip()
+
+    def display_combat_encounter(self) -> None:
+        """
+        Function for displaying Combat menus, rolls enemies and sets background for the fight_screen constructor
+        """
+        running = False
+        while running:
+
+            self.__screen.fill((333, 0, 123))
 
             pygame.display.flip()
 
 
+
 if __name__ == "__main__":
 
-    game = FirstGame((800, 600))
+    game = ScrunkleQuest((800, 600))
     game.main()
